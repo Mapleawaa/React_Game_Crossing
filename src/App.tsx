@@ -17,7 +17,7 @@ function App() {
   const debugVisible = useGameStore((state) => state.debugVisible)
   const playtimeMs = useGameStore((state) => state.playtimeMs)
   const sessionStartedAt = useGameStore((state) => state.sessionStartedAt)
-  const routeProgress = useGameStore((state) => state.routeProgress)
+  const routeArchiveProgress = useGameStore((state) => state.routeArchiveProgress)
   const checkpointSnapshots = useGameStore((state) => state.checkpointSnapshots)
   const week = useGameStore((state) => state.week)
   const runtimeError = useGameStore((state) => state.runtimeError)
@@ -87,7 +87,7 @@ function App() {
         onNewGame={newGame}
         onNewGamePlus={newGamePlus}
         newGamePlusUnlocked={isNewGamePlusUnlocked({ firstClear, hookIds })}
-        routeProgress={routeProgress}
+        archiveProgress={routeArchiveProgress}
         week={week}
       />
     )
@@ -117,7 +117,7 @@ function App() {
       phase={phase}
       playtimeMs={playtimeMs}
       reducedMotion={reducedMotion}
-      routeProgress={routeProgress}
+      archiveProgress={routeArchiveProgress}
       scene={frame}
       sessionStartedAt={sessionStartedAt}
       textSpeed={textSpeed}

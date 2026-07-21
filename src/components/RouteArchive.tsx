@@ -14,16 +14,18 @@ import { type CheckpointSnapshot, isCheckpointCompatible } from '../store/game'
 import { type RouteNodePosition, getRouteLayout } from '../story/routeLayout'
 import {
   CHECKPOINT_IDS,
+  type RouteEdgeDefinition,
   type RouteNodeDefinition,
   type RunRouteProgress,
   getDiscoveredRouteNodes,
+  getRouteChoicesForNode,
   getRouteDiscoveryPercent,
   routeEdges,
 } from '../story/routeTopology'
 
 interface RouteArchiveProps {
   currentRouteNodeId?: string
-  routeProgress: RunRouteProgress
+  archiveProgress: RunRouteProgress
   checkpointSnapshots: Record<string, CheckpointSnapshot>
   week: 1 | 2
   onBack: () => void
@@ -34,6 +36,8 @@ interface RouteNodeData extends Record<string, unknown> {
   definition: RouteNodeDefinition
   current: boolean
   selected: boolean
+  discoveredChoices: number
+  totalChoices: number
 }
 
 export function RouteArchive(props: RouteArchiveProps) {
@@ -46,7 +50,7 @@ export function RouteArchive(props: RouteArchiveProps) {
 
 function RouteArchiveContent({
   currentRouteNodeId,
-  routeProgress,
+  archiveProgress,
   checkpointSnapshots,
   week,
   onBack,
@@ -67,16 +71,16 @@ function RouteArchiveContent({
   }, [])
 
   const discoveredIds = useMemo(
-    () => new Set(routeProgress.discoveredNodeIds),
-    [routeProgress.discoveredNodeIds],
+    () => new Set(archiveProgress.discoveredNodeIds),
+    [archiveProgress.discoveredNodeIds],
   )
   const discoveredEdgeIds = useMemo(
-    () => new Set(routeProgress.discoveredEdgeIds),
-    [routeProgress.discoveredEdgeIds],
+    () => new Set(archiveProgress.discoveredEdgeIds),
+    [archiveProgress.discoveredEdgeIds],
   )
   const visibleDefinitions = useMemo(
-    () => getDiscoveredRouteNodes(routeProgress, week),
-    [routeProgress, week],
+    () => getDiscoveredRouteNodes(archiveProgress, week),
+    [archiveProgress, week],
   )
   const selectedDefinition = visibleDefinitions.find((routeNode) => routeNode.id === selectedNodeId)
   const selectedCheckpoint = selectedDefinition?.checkpointId
@@ -85,18 +89,27 @@ function RouteArchiveContent({
   const incomingEdge = routeEdges.find(
     (routeEdge) => routeEdge.to === selectedDefinition?.id && discoveredEdgeIds.has(routeEdge.id),
   )
-  const percent = getRouteDiscoveryPercent(routeProgress, week)
+  const selectedChoices = selectedDefinition
+    ? getRouteChoicesForNode(selectedDefinition.id)
+    : []
+  const percent = getRouteDiscoveryPercent(archiveProgress, week)
+  const activeCheckpointCount = Object.values(checkpointSnapshots).filter(isCheckpointCompatible).length
 
-  const nodes = visibleDefinitions.map((definition) => ({
-    id: definition.id,
-    type: 'routeNode',
-    position: positions?.get(definition.id) ?? { x: 0, y: 0 },
-    data: {
-      definition,
-      current: definition.id === currentRouteNodeId,
-      selected: definition.id === selectedNodeId,
-    } satisfies RouteNodeData,
-  }))
+  const nodes = visibleDefinitions.map((definition) => {
+    const choices = getRouteChoicesForNode(definition.id)
+    return {
+      id: definition.id,
+      type: 'routeNode',
+      position: positions?.get(definition.id) ?? { x: 0, y: 0 },
+      data: {
+        definition,
+        current: definition.id === currentRouteNodeId,
+        selected: definition.id === selectedNodeId,
+        discoveredChoices: choices.filter((choice) => discoveredEdgeIds.has(choice.id)).length,
+        totalChoices: choices.length,
+      } satisfies RouteNodeData,
+    }
+  })
   const edges = routeEdges
     .filter(
       (routeEdge) =>
@@ -125,13 +138,13 @@ function RouteArchiveContent({
           </button>
           <div>
             <p className='font-mono text-[0.65rem] text-cyan-300 tracking-[0.2em]'>ROUTE ARCHIVE</p>
-            <h1 className='mt-1 font-medium text-lg'>第 {week} 周目路线档案</h1>
+            <h1 className='mt-1 font-medium text-lg'>路径成就档案 · 第 {week} 周目</h1>
           </div>
         </div>
         <div className='text-right font-mono text-neutral-500 text-xs'>
           <p>发现率 {percent}%</p>
           <p className='mt-1'>
-            CHECKPOINT {routeProgress.unlockedCheckpointIds.length}/
+            CHECKPOINT {activeCheckpointCount}/
             {Object.keys(CHECKPOINT_IDS).length}
           </p>
         </div>
@@ -167,6 +180,8 @@ function RouteArchiveContent({
           checkpoint={selectedCheckpoint}
           definition={selectedDefinition}
           incomingLabel={incomingEdge?.resultLabel}
+          choices={selectedChoices}
+          discoveredEdgeIds={discoveredEdgeIds}
           onRequestCheckpoint={setConfirmCheckpointId}
         />
       </div>
@@ -184,6 +199,8 @@ function RouteArchiveContent({
           checkpoint={selectedCheckpoint}
           definition={selectedDefinition}
           incomingLabel={incomingEdge?.resultLabel}
+          choices={selectedChoices}
+          discoveredEdgeIds={discoveredEdgeIds}
           onRequestCheckpoint={setConfirmCheckpointId}
         />
       </div>
@@ -203,7 +220,7 @@ function RouteArchiveContent({
 }
 
 function RouteNode({ data }: NodeProps) {
-  const { definition, current, selected } = data as RouteNodeData
+  const { definition, current, selected, discoveredChoices, totalChoices } = data as RouteNodeData
   const toneClass = routeToneClass(definition)
 
   return (
@@ -219,9 +236,12 @@ function RouteNode({ data }: NodeProps) {
           <span className='truncate font-mono text-[0.58rem] text-neutral-600 uppercase'>
             {definition.kind}
           </span>
-          {definition.checkpointId ? (
-            <span className='font-mono text-[0.56rem] text-emerald-300'>CP</span>
-          ) : null}
+          <span className='flex items-center gap-2 font-mono text-[0.56rem]'>
+            {totalChoices > 0 ? (
+              <span className='text-neutral-500'>CHOICE {discoveredChoices}/{totalChoices}</span>
+            ) : null}
+            {definition.checkpointId ? <span className='text-emerald-300'>CP</span> : null}
+          </span>
         </div>
         <p className={`mt-2 truncate text-sm ${current ? 'text-cyan-100' : 'text-neutral-200'}`}>
           {definition.label}
@@ -259,6 +279,8 @@ function MobileTimeline({
         )
         const selected = definition.id === selectedNodeId
         const current = definition.id === currentRouteNodeId
+        const choices = getRouteChoicesForNode(definition.id)
+        const discoveredChoices = choices.filter((choice) => discoveredEdgeIds.has(choice.id)).length
         return (
           <li className='relative grid grid-cols-[1.5rem_1fr] gap-3 pb-5' key={definition.id}>
             {index < ordered.length - 1 ? (
@@ -286,6 +308,11 @@ function MobileTimeline({
                 {definition.checkpointId ? (
                   <span className='font-mono text-[0.58rem] text-emerald-300'>CHECKPOINT</span>
                 ) : null}
+                {choices.length > 0 ? (
+                  <span className='font-mono text-[0.58rem] text-neutral-500'>
+                    CHOICE {discoveredChoices}/{choices.length}
+                  </span>
+                ) : null}
               </span>
             </button>
           </li>
@@ -299,11 +326,15 @@ function RouteDetail({
   definition,
   checkpoint,
   incomingLabel,
+  choices,
+  discoveredEdgeIds,
   onRequestCheckpoint,
 }: {
   definition?: RouteNodeDefinition
   checkpoint?: CheckpointSnapshot
   incomingLabel?: string
+  choices: RouteEdgeDefinition[]
+  discoveredEdgeIds: Set<string>
   onRequestCheckpoint: (checkpointId: string) => void
 }) {
   return (
@@ -321,11 +352,16 @@ function RouteDetail({
               <DetailRow label='记录时间' value={formatCheckpointTime(checkpoint.savedAt)} />
             ) : null}
           </dl>
+          {choices.length > 0 ? (
+            <RouteChoiceAchievements choices={choices} discoveredEdgeIds={discoveredEdgeIds} />
+          ) : null}
           {definition.checkpointId ? (
             <div className='mt-8 border-emerald-300/25 border-l pl-4'>
-              <p className='text-emerald-300 text-xs'>CHECKPOINT 已解锁</p>
+              <p className={`text-xs ${checkpoint ? 'text-emerald-300' : 'text-neutral-500'}`}>
+                {checkpoint ? 'CHECKPOINT 可回溯' : 'CHECKPOINT 当前无可用快照'}
+              </p>
               <p className='mt-2 text-neutral-500 text-sm leading-6'>
-                回溯会恢复当时的剧情状态、路线历史和游玩时间。
+                回溯会恢复当时的剧情状态和游玩时间，已经点亮的路径成就不会撤销。
               </p>
               <button
                 className='menu-action mt-4 disabled:cursor-not-allowed disabled:opacity-40'
@@ -341,9 +377,51 @@ function RouteDetail({
           ) : null}
         </div>
       ) : (
-        <p className='mt-5 text-neutral-600 text-sm leading-7'>选择一个已发现节点查看记录。</p>
+        <p className='mt-5 text-neutral-600 text-sm leading-7'>选择一个已点亮节点查看记录。</p>
       )}
     </aside>
+  )
+}
+
+function RouteChoiceAchievements({
+  choices,
+  discoveredEdgeIds,
+}: {
+  choices: RouteEdgeDefinition[]
+  discoveredEdgeIds: Set<string>
+}) {
+  return (
+    <section className='mt-8' aria-label='路径选择成就'>
+      <div className='flex items-center justify-between gap-4 border-neutral-800 border-b pb-2'>
+        <p className='font-mono text-[0.65rem] text-neutral-600 tracking-[0.16em]'>PATH CHOICES</p>
+        <span className='font-mono text-[0.6rem] text-neutral-600'>
+          {choices.filter((choice) => discoveredEdgeIds.has(choice.id)).length}/{choices.length}
+        </span>
+      </div>
+      <ol>
+        {choices.map((choice) => {
+          const discovered = discoveredEdgeIds.has(choice.id)
+          return (
+            <li
+              className='grid min-h-11 grid-cols-[0.65rem_1fr_auto] items-center gap-3 border-neutral-900 border-b py-2.5'
+              key={choice.id}
+            >
+              <span
+                className={`h-2 w-2 border ${
+                  discovered ? 'border-cyan-300 bg-cyan-300' : 'border-neutral-700'
+                }`}
+              />
+              <span className={discovered ? 'text-neutral-300 text-sm' : 'text-neutral-700 text-sm'}>
+                {discovered ? choice.resultLabel : '什么都没有'}
+              </span>
+              <span className='font-mono text-[0.56rem] text-neutral-700'>
+                {discovered ? 'DISCOVERED' : 'UNKNOWN'}
+              </span>
+            </li>
+          )
+        })}
+      </ol>
+    </section>
   )
 }
 
@@ -367,7 +445,7 @@ function CheckpointConfirm({
         <p className='font-mono text-emerald-300 text-xs tracking-[0.18em]'>CHECKPOINT REWIND</p>
         <h2 className='mt-3 font-medium text-2xl'>回溯当前周目</h2>
         <p className='mt-5 text-neutral-400 leading-7'>
-          当前自动进度将回到该节点，路线解锁、游玩时间和历史同时恢复。六个手动存档不会改变。
+          当前自动进度将回到该节点，剧情历史和游玩时间同时恢复。已经点亮的路径成就和六个手动存档不会改变。
         </p>
         {!compatible ? (
           <p className='mt-4 border-red-400/35 border-l pl-3 text-red-300 text-sm'>

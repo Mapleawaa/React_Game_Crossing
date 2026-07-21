@@ -26,7 +26,7 @@ interface GameShellProps {
   lastSavedAt: string | null
   playtimeMs: number
   sessionStartedAt: number | null
-  routeProgress: RunRouteProgress
+  archiveProgress: RunRouteProgress
   checkpointSnapshots: Record<string, CheckpointSnapshot>
   week: 1 | 2
   fontSize: FontSize
@@ -53,7 +53,7 @@ export function GameShell({
   lastSavedAt,
   playtimeMs,
   sessionStartedAt,
-  routeProgress,
+  archiveProgress,
   checkpointSnapshots,
   week,
   fontSize,
@@ -72,7 +72,7 @@ export function GameShell({
 }: GameShellProps) {
   const isPaused = phase === 'paused'
   const elapsedMs = useElapsedPlaytime(playtimeMs, sessionStartedAt, !isPaused)
-  const progress = getRouteDiscoveryPercent(routeProgress, week)
+  const progress = getRouteDiscoveryPercent(archiveProgress, week)
 
   return (
     <main className='relative h-dvh min-h-screen overflow-hidden bg-neutral-950 text-neutral-100'>
@@ -115,7 +115,7 @@ export function GameShell({
             onLoadCheckpoint={onLoadCheckpoint}
             onRestart={onRestart}
             onReturnToTitle={onReturnToTitle}
-            routeProgress={routeProgress}
+            archiveProgress={archiveProgress}
             week={week}
           />
         ) : null}
@@ -458,7 +458,7 @@ type PausePanel = 'main' | 'save' | 'load' | 'settings' | 'route'
 
 function PauseMenu({
   currentRouteNodeId,
-  routeProgress,
+  archiveProgress,
   checkpointSnapshots,
   week,
   createSnapshot,
@@ -469,7 +469,7 @@ function PauseMenu({
   onReturnToTitle,
 }: {
   currentRouteNodeId?: string
-  routeProgress: RunRouteProgress
+  archiveProgress: RunRouteProgress
   checkpointSnapshots: Record<string, CheckpointSnapshot>
   week: 1 | 2
   createSnapshot: () => SaveSnapshot
@@ -489,7 +489,7 @@ function PauseMenu({
           currentRouteNodeId={currentRouteNodeId}
           onBack={() => setPanel('main')}
           onLoadCheckpoint={onLoadCheckpoint}
-          routeProgress={routeProgress}
+          archiveProgress={archiveProgress}
           week={week}
         />
       </Suspense>

@@ -15,7 +15,7 @@ interface TitleMenuProps {
   hasSave: boolean
   lastSavedAt: string | null
   currentRouteNodeId?: string
-  routeProgress: RunRouteProgress
+  archiveProgress: RunRouteProgress
   checkpointSnapshots: Record<string, CheckpointSnapshot>
   week: 1 | 2
   createSnapshot: () => SaveSnapshot
@@ -33,7 +33,7 @@ export function TitleMenu({
   hasSave,
   lastSavedAt,
   currentRouteNodeId,
-  routeProgress,
+  archiveProgress,
   checkpointSnapshots,
   week,
   createSnapshot,
@@ -54,7 +54,7 @@ export function TitleMenu({
           currentRouteNodeId={currentRouteNodeId}
           onBack={() => setPanel(null)}
           onLoadCheckpoint={onLoadCheckpoint}
-          routeProgress={routeProgress}
+          archiveProgress={archiveProgress}
           week={week}
         />
       </Suspense>

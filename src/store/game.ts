@@ -85,6 +85,7 @@ interface GameState {
   sessionStartedAt: number | null
   visitedSceneIds: SceneId[]
   routeProgress: RunRouteProgress
+  routeArchiveProgress: RunRouteProgress
   checkpointSnapshots: Record<string, CheckpointSnapshot>
   pendingChoiceId: string | null
   runtimeError: string | null
@@ -118,6 +119,7 @@ const initialProgress = {
   sessionStartedAt: null as number | null,
   visitedSceneIds: [] as SceneId[],
   routeProgress: cloneRouteProgress(EMPTY_ROUTE_PROGRESS),
+  routeArchiveProgress: cloneRouteProgress(EMPTY_ROUTE_PROGRESS),
   checkpointSnapshots: {} as Record<string, CheckpointSnapshot>,
   pendingChoiceId: null as string | null,
   runtimeError: null as string | null,
@@ -145,6 +147,30 @@ function cloneRouteProgress(progress: RunRouteProgress): RunRouteProgress {
     discoveredEdgeIds: [...progress.discoveredEdgeIds],
     unlockedCheckpointIds: [...progress.unlockedCheckpointIds],
   }
+}
+
+export function mergeRouteProgress(...progresses: RunRouteProgress[]): RunRouteProgress {
+  return {
+    discoveredNodeIds: Array.from(
+      new Set(progresses.flatMap((progress) => progress.discoveredNodeIds)),
+    ),
+    discoveredEdgeIds: Array.from(
+      new Set(progresses.flatMap((progress) => progress.discoveredEdgeIds)),
+    ),
+    unlockedCheckpointIds: Array.from(
+      new Set(progresses.flatMap((progress) => progress.unlockedCheckpointIds)),
+    ),
+  }
+}
+
+function mergeCheckpointProgress(
+  archiveProgress: RunRouteProgress,
+  checkpointSnapshots: Record<string, CheckpointSnapshot>,
+): RunRouteProgress {
+  return mergeRouteProgress(
+    archiveProgress,
+    ...Object.values(checkpointSnapshots).map((snapshot) => snapshot.routeProgress),
+  )
 }
 
 function profileContext(week: 1 | 2): StoryProfileContext {
@@ -343,7 +369,11 @@ function captureCheckpoint(
   })
 }
 
-function runState(session: StorySession, week: 1 | 2) {
+function runState(
+  session: StorySession,
+  week: 1 | 2,
+  archiveProgress: RunRouteProgress,
+) {
   applyMeta(session.frame)
   const routeProgress = discoverFrame(
     cloneRouteProgress(EMPTY_ROUTE_PROGRESS),
@@ -351,6 +381,7 @@ function runState(session: StorySession, week: 1 | 2) {
     session.frame,
     null,
   )
+  const routeArchiveProgress = mergeRouteProgress(archiveProgress, routeProgress)
   const history = [createRouteEntry(session.frame, 0)]
   const transcript = transcriptForFrame(session.frame)
   const playtimeMs = 0
@@ -386,6 +417,7 @@ function runState(session: StorySession, week: 1 | 2) {
     sessionStartedAt: startSession(),
     visitedSceneIds,
     routeProgress,
+    routeArchiveProgress,
     checkpointSnapshots,
     pendingChoiceId,
     runtimeError: null,
@@ -408,6 +440,7 @@ function transitionState(
     session.frame,
     choiceForTransition,
   )
+  const routeArchiveProgress = mergeRouteProgress(state.routeArchiveProgress, routeProgress)
   const history = changedRouteNode
     ? [...state.history, createRouteEntry(session.frame, state.history.length)]
     : state.history
@@ -439,6 +472,7 @@ function transitionState(
     sessionStartedAt: startSession(),
     visitedSceneIds,
     routeProgress,
+    routeArchiveProgress,
     checkpointSnapshots,
     pendingChoiceId,
     runtimeError: null,
@@ -503,6 +537,7 @@ type PersistedGameState = Pick<
   | 'sessionStartedAt'
   | 'visitedSceneIds'
   | 'routeProgress'
+  | 'routeArchiveProgress'
   | 'checkpointSnapshots'
   | 'pendingChoiceId'
 >
@@ -511,6 +546,12 @@ function migratePersistedGame(persistedState: unknown): PersistedGameState {
   const state = (persistedState ?? {}) as Partial<GameState>
   const frame = state.frame ? normalizeFrame(state.frame, state.storyStateJson ?? undefined) : null
   const visitedSceneIds = state.visitedSceneIds ?? (frame ? [frame.id] : [])
+  const routeProgress = normalizeRouteProgress(state.routeProgress, visitedSceneIds)
+  const checkpointSnapshots = normalizeCheckpointSnapshots(state.checkpointSnapshots)
+  const routeArchiveProgress = mergeCheckpointProgress(
+    normalizeRouteProgress(state.routeArchiveProgress ?? state.routeProgress, visitedSceneIds),
+    checkpointSnapshots,
+  )
   return {
     currentSceneId: state.currentSceneId ?? frame?.id ?? INITIAL_SCENE,
     frame,
@@ -525,8 +566,9 @@ function migratePersistedGame(persistedState: unknown): PersistedGameState {
     playtimeMs: state.playtimeMs ?? 0,
     sessionStartedAt: null,
     visitedSceneIds,
-    routeProgress: normalizeRouteProgress(state.routeProgress, visitedSceneIds),
-    checkpointSnapshots: normalizeCheckpointSnapshots(state.checkpointSnapshots),
+    routeProgress,
+    routeArchiveProgress,
+    checkpointSnapshots,
     pendingChoiceId: state.pendingChoiceId ?? null,
   }
 }
@@ -538,13 +580,15 @@ export const useGameStore = create<GameState>()(
       ...initialProgress,
       debugVisible: false,
       newGame: () => {
+        const state = get()
         try {
-          set(runState(storyController.start(profileContext(1)), 1))
+          set(runState(storyController.start(profileContext(1)), 1, state.routeArchiveProgress))
         } catch (error) {
           set(errorState(error))
         }
       },
       newGamePlus: () => {
+        const state = get()
         const meta = useMetaStore.getState()
         if (!isNewGamePlusUnlocked(meta)) {
           set(errorState(new Error('收集至少 3 个终幕钩子后才能进入二周目。')))
@@ -552,7 +596,7 @@ export const useGameStore = create<GameState>()(
         }
 
         try {
-          set(runState(storyController.start(profileContext(2)), 2))
+          set(runState(storyController.start(profileContext(2)), 2, state.routeArchiveProgress))
         } catch (error) {
           set(errorState(error))
         }
@@ -618,14 +662,22 @@ export const useGameStore = create<GameState>()(
           sessionStartedAt: null,
         })),
       restartGame: () => {
-        const week = get().week
+        const state = get()
+        const week = state.week
         try {
-          set(runState(storyController.start(profileContext(week)), week))
+          set(
+            runState(
+              storyController.start(profileContext(week)),
+              week,
+              state.routeArchiveProgress,
+            ),
+          )
         } catch (error) {
           set(errorState(error))
         }
       },
       loadSnapshot: (rawSnapshot) => {
+        const state = get()
         const snapshot = normalizeSaveSnapshot(rawSnapshot)
         if (!isSnapshotCompatible(snapshot)) {
           set(errorState(new Error('该存档来自不同的剧情版本，无法安全读取。')))
@@ -649,6 +701,10 @@ export const useGameStore = create<GameState>()(
             sessionStartedAt: startSession(),
             visitedSceneIds: snapshot.visitedSceneIds,
             routeProgress: snapshot.routeProgress,
+            routeArchiveProgress: mergeCheckpointProgress(
+              mergeRouteProgress(state.routeArchiveProgress, snapshot.routeProgress),
+              snapshot.checkpointSnapshots,
+            ),
             checkpointSnapshots: snapshot.checkpointSnapshots,
             pendingChoiceId: snapshot.pendingChoiceId,
             runtimeError: null,
@@ -683,6 +739,10 @@ export const useGameStore = create<GameState>()(
             sessionStartedAt: startSession(),
             visitedSceneIds: snapshot.visitedSceneIds,
             routeProgress: cloneRouteProgress(snapshot.routeProgress),
+            routeArchiveProgress: mergeRouteProgress(
+              state.routeArchiveProgress,
+              snapshot.routeProgress,
+            ),
             checkpointSnapshots: state.checkpointSnapshots,
             pendingChoiceId: snapshot.pendingChoiceId,
             runtimeError: null,
@@ -721,7 +781,7 @@ export const useGameStore = create<GameState>()(
     }),
     {
       name: 'narrative-engine-v2',
-      version: 2,
+      version: 3,
       migrate: (persistedState) => migratePersistedGame(persistedState),
       partialize: (state) => ({
         currentSceneId: state.currentSceneId,
@@ -738,6 +798,7 @@ export const useGameStore = create<GameState>()(
         sessionStartedAt: null,
         visitedSceneIds: state.visitedSceneIds,
         routeProgress: state.routeProgress,
+        routeArchiveProgress: state.routeArchiveProgress,
         checkpointSnapshots: state.checkpointSnapshots,
         pendingChoiceId: state.pendingChoiceId,
       }),

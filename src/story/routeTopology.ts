@@ -335,6 +335,17 @@ export function findRouteEdge(
   )
 }
 
+export function getRouteChoicesForNode(nodeId: string): RouteEdgeDefinition[] {
+  const seenChoiceIds = new Set<string>()
+  return routeEdges.filter((routeEdge) => {
+    if (routeEdge.from !== nodeId || !routeEdge.choiceId || seenChoiceIds.has(routeEdge.choiceId)) {
+      return false
+    }
+    seenChoiceIds.add(routeEdge.choiceId)
+    return true
+  })
+}
+
 export function getEligibleRouteNodes(week: 1 | 2): RouteNodeDefinition[] {
   return routeNodes.filter((routeNode) => !routeNode.week || routeNode.week === week)
 }
