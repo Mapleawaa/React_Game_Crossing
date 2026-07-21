@@ -3,8 +3,9 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Story } from 'inkjs'
 import { beforeAll, describe, expect, it } from 'vitest'
-import type { StoryFrame, StorySession } from './StoryController'
+import type { StorySession } from './StoryController'
 import { StoryController } from './StoryController'
+import type { StoryFrame } from './types'
 
 const gameRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const storyJsonPath = join(gameRoot, 'src', 'story', 'generated', 'story.json')
@@ -33,8 +34,11 @@ function seedAtKnot(storyJson: unknown, knot: string): StorySession {
     tags: [],
     choices: [],
     commands: [],
+    warnings: [],
     canContinue: true,
+    continueMode: 'append',
     isComplete: false,
+    revision: 0,
   }
   return { frame: bare, stateJson: story.state.ToJson() }
 }
