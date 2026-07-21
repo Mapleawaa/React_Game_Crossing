@@ -1,0 +1,203 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+  background: #0a0a0a;
+  font-family: Inter, "Noto Sans SC", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  background: #f4f7f8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: #0a0a0a;
+}
+
+html[data-theme="light"] {
+  background: #f4f7f8;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background: #0a0a0a;
+}
+
+html[data-theme="light"] body {
+  background: #f4f7f8;
+}
+
+button {
+  font: inherit;
+}
+
+::selection {
+  background: rgba(103, 232, 249, 0.25);
+  color: #f5f5f5;
+}
+
+html[data-theme="light"] ::selection {
+  background: rgba(14, 116, 144, 0.18);
+  color: #0f172a;
+}
+
+html[data-theme="light"] .bg-neutral-950 {
+  background-color: #f4f7f8;
+}
+
+html[data-theme="light"] .bg-neutral-950\/80 {
+  background-color: rgba(244, 247, 248, 0.88);
+}
+
+html[data-theme="light"] .bg-neutral-950\/82 {
+  background-color: rgba(244, 247, 248, 0.86);
+}
+
+html[data-theme="light"] .bg-neutral-950\/95 {
+  background-color: rgba(244, 247, 248, 0.96);
+}
+
+html[data-theme="light"] .bg-neutral-950\/70 {
+  background-color: rgba(244, 247, 248, 0.9);
+}
+
+html[data-theme="light"] .bg-neutral-900,
+html[data-theme="light"] .hover\:bg-neutral-900:hover {
+  background-color: #e5ebee;
+}
+
+html[data-theme="light"] .bg-neutral-900\/35 {
+  background-color: rgba(226, 232, 236, 0.7);
+}
+
+html[data-theme="light"] .bg-neutral-900\/45,
+html[data-theme="light"] .bg-neutral-900\/55 {
+  background-color: rgba(226, 232, 236, 0.82);
+}
+
+html[data-theme="light"] .text-neutral-100,
+html[data-theme="light"] .text-neutral-200,
+html[data-theme="light"] .text-neutral-300 {
+  color: #172026;
+}
+
+html[data-theme="light"] .text-neutral-400,
+html[data-theme="light"] .text-neutral-500,
+html[data-theme="light"] .text-neutral-600 {
+  color: #596872;
+}
+
+html[data-theme="light"] .border-neutral-700,
+html[data-theme="light"] .border-neutral-800 {
+  border-color: #cfd9df;
+}
+
+html[data-theme="light"] .bg-cyan-300 {
+  background-color: #0e7490;
+}
+
+html[data-theme="light"] .text-cyan-300 {
+  color: #0e7490;
+}
+
+html[data-theme="light"] .text-neutral-950 {
+  color: #f8fafc;
+}
+
+html[data-theme="light"] .boot-sequence .text-neutral-100,
+html[data-theme="light"] .boot-sequence .text-neutral-200 {
+  color: #f5f5f5;
+}
+
+html[data-theme="light"] .boot-sequence .text-neutral-400 {
+  color: #a3a3a3;
+}
+
+html[data-theme="light"] .boot-sequence .text-neutral-600 {
+  color: #525252;
+}
+
+html[data-theme="light"] .boot-sequence .text-neutral-700 {
+  color: #404040;
+}
+
+html[data-theme="light"] .boot-sequence .border-neutral-600 {
+  border-color: #525252;
+}
+
+html[data-theme="light"] .boot-sequence .border-neutral-800 {
+  border-color: #262626;
+}
+
+html[data-theme="light"] .boot-sequence .menu-action {
+  border-color: #525252;
+  color: #f5f5f5;
+}
+
+html[data-theme="light"] .boot-sequence .menu-action:hover {
+  border-color: #a3a3a3;
+  background: #171717;
+}
+
+@layer components {
+  .menu-action {
+    min-height: 2.75rem;
+    border: 1px solid var(--color-neutral-700);
+    padding-inline: 1.25rem;
+    color: var(--color-neutral-100);
+    font-size: 0.875rem;
+    transition: border-color 160ms ease, background-color 160ms ease, transform 120ms ease;
+  }
+
+  .menu-action:hover {
+    border-color: var(--color-neutral-400);
+    background: var(--color-neutral-900);
+  }
+
+  .menu-action:focus-visible {
+    outline: 2px solid var(--color-neutral-400);
+    outline-offset: 2px;
+  }
+
+  .menu-action:active {
+    transform: translateY(1px);
+  }
+
+  .pause-button {
+    min-height: 3rem;
+    width: 100%;
+    border: 1px solid var(--color-neutral-800);
+    background: rgba(23, 23, 23, 0.55);
+    padding-inline: 1rem;
+    text-align: left;
+    color: var(--color-neutral-100);
+    transition: border-color 160ms ease, background-color 160ms ease;
+  }
+
+  html[data-theme="light"] .pause-button {
+    background: rgba(226, 232, 236, 0.7);
+    color: #172026;
+  }
+
+  .pause-button:hover {
+    border-color: rgba(103, 232, 249, 0.6);
+    background: var(--color-neutral-900);
+  }
+
+  html[data-theme="light"] .pause-button:hover {
+    background: #e5ebee;
+  }
+
+  .pause-button:focus-visible {
+    outline: 2px solid rgba(103, 232, 249, 0.7);
+    outline-offset: 2px;
+  }
+}
