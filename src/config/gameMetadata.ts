@@ -28,8 +28,8 @@ export const GAME_METADATA = {
       '这次也是梳理明白了我的 AI 开发工作流，由多个模型辅助开发，积累了很多经验。',
     credits: {
       creator: '主创 & 故事：Maple_awa',
-      script: '剧本：DeepSeek V4 Pro',
-      program: '程序：ChatGPT 5.6 Sol & Claude Opus 4.7',
+      script: '剧本：DeepSeek V4 Pro & Grok 4.5',
+      program: '程序：Kimi K3 & ChatGPT 5.6 Sol & Claude Opus 4.7',
       qa: '纠错：DeepSeek V4 Flash',
       deploy: '部署：Cloudflare',
     },
